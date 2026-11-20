@@ -1,59 +1,159 @@
-# API_DOCUMENTATION.md — Blue-button
+# API_DOCUMENTATION.md — Blue-button / аудит ANDRPROD DD 4.0.1
 
-## Правило доказательности
+## Источники и границы утверждений
 
-Здесь перечисляются только API и точки интеграции, подтверждённые доступным первичным источником либо воспроизводимым тестом. Требования из README/INSTRUCTIONS и предполагаемые имена методов сами по себе не являются подтверждением API.
+Аудирован файл Andrprod-test-v4.0.1.js, 2 059 строк, SHA-256 2BA22C4C96A94A1B30D15F5A67E1F28FB1390662ABA9521ABAE54847DA18A332. Номера ниже относятся к приложенному файлу.
 
-Дата аудита: 2026-11-20. Все пункты ниже относятся к доступному через подключённый GitHub доступ состоянию репозиториев.
+Статусы:
 
-## Итог
+- **Найдено в исходнике** — вызов/URL/формат явно присутствует в JS.
+- **Контракт предполагается кодом** — парсер принимает такую форму, но реальный серверный ответ не приложен.
+- **НЕ ПРОВЕРЕНО В LAMPA/НА СЕРВЕРЕ** — исходник не доказывает, что метод существует, его сигнатура корректна или вызов проходит на целевой версии/платформе.
 
-**Подтверждённых API Lampa, Lampac или иных источников на текущем этапе нет.** Поэтому в проекте пока нельзя заявить поддержку кнопки на карточке, поиска, получения потоков или запуска воспроизведения.
+Файл не содержит захваченных сетевых транскриптов или исходников Lampa/Lampac. Ниже нет подтверждённого фактического ответа реального сервера. Образцы JSON — схема, выведенная из ветвлений парсера, и не должны использоваться как фикстуры реального API.
 
-## Реестр интеграций
+## 1. Обнаружение установленных источников
 
-| Интеграция | Статус | Подтверждённый контракт |
-|---|---|---|
-| Загрузка плагина Lampa | НЕ ПРОВЕРЕНО | Нет доступного исходника Blue-button и данных о целевой версии Lampa. |
-| Добавление кнопки на карточку | НЕ ПРОВЕРЕНО | Не найден первичный источник, подтверждающий конкретную точку расширения или вызов. |
-| Получение метаданных карточки | НЕ ПРОВЕРЕНО | Поля, объект и способ их получения неизвестны. |
-| Сетевые запросы через Lampa | НЕ ПРОВЕРЕНО | Не подтверждены методы, параметры, обработка ошибок или совместимость платформ. |
-| Открытие/закрытие интерфейса | НЕ ПРОВЕРЕНО | Не подтверждены компонент, навигационный контракт или управление фокусом. |
-| Запуск воспроизведения | НЕ ПРОВЕРЕНО | Не подтверждён формат объекта и вызов штатного проигрывателя. |
-| Lampac | НЕ ПРОВЕРЕНО | Не получены исходники/документация сервера или примеры запросов и ответов. |
-| Старый проект ANDRPROD-DD-NEW | НЕ ДОСТУПЕН ДЛЯ АУДИТА | GitHub API вернул 404 для репозитория и запрошенных файлов. |
+**Место:** 315–340, 870–949.
 
-## Исследованный код
+Входной список берётся из:
 
-### Blue-button
+- Lampa.Storage.get('plugins', []) — строки URL или объекты с url/src, name/title, status (887–905);
+- Lampa.Manifest.plugins, только если это Array (891–894).
 
-Репозиторий: [Fikus-sup4ik/Blue-button](https://github.com/Fikus-sup4ik/Blue-button), default branch `main`.
+Сопоставление выполняется по подстрокам URL/name с whitelist (315–332); blacklist исключает не-видеоплагины (307–313). Список профилей есть в ARCHITECTURE.md. Это эвристика обнаружения, а не API каждого названного плагина.
 
-- Прочитаны `README.md` и `INSTRUCTIONS.md`.
-- Чтение `index.js` вернуло 404.
-- Видимая история содержит коммиты README и INSTRUCTIONS.
-- Эти документы задают цель и желаемые свойства, но не содержат проверяемых сигнатур вызовов Lampa или реальных API источников.
+## 2. Lampac-like network protocol
 
-### Предшественник
+### 2.1 Проверка/обнаружение balancers
 
-Запрошенный репозиторий: [Fikus-sup4ik/ANDRPROD-DD-NEW](https://github.com/Fikus-sup4ik/ANDRPROD-DD-NEW).
+**Место:** 358–439, 561–643.
 
-Запросы на получение метаданных репозитория, `Andrprod-test-v4.0.1.js`, `ANDRPROD-DD-4.0.2.js` и `README.md` завершились 404. Следовательно, исходники не были прочитаны и ни одна интеграция из них не подтверждена. 404 может означать неверный адрес, удалённый или приватный репозиторий либо недоступность через подключение; причина не установлена.
+Для URL найденного плагина вычисляется origin по regex ^(https?://[^/?#]+) (349–353), затем отправляется:
 
-## Что требуется для подтверждения API
+~~~http
+GET <origin>/lite/events?life=true
+~~~
 
-Для каждого интерфейса зафиксировать:
+Вызов в коде: new Lampa.Reguest(), net.timeout(timeoutMs), net.silent(url, success, error, false, {dataType:'text'}); guard timeout равен настройке + 250 ms, в guard вызывается net.clear() (561–600). Значение timeout по умолчанию 6000 ms; getter разрешает 2000–20000 ms (180–184), UI предлагает 3000/6000/9000/12000 (1860–1864).
 
-1. Первичный источник: версия/commit репозитория Lampa, официальная документация или исходник адаптера.
-2. Точную сигнатуру и обязательные аргументы.
-3. Форму входных и выходных данных с обезличенным примером.
-4. Ограничения платформ, CORS, авторизации, таймаута и отмены.
-5. Минимальную воспроизводимую проверку и дату её выполнения.
+**Это точная реализация в файле, а не подтверждённый публичный контракт Lampa.** Reguest написано именно так в исходнике.
 
-Для источника дополнительно сохранить реальный запрос и ответ, тип контента, поля идентификаторов и формат playback-данных. Секреты и персональные данные не сохранять.
+Парсер ответа принимает JSON-строку или объект и ищет массивы в корне либо в полях channels, results, online, balancers, data, life.online, life.balancers, life.channels (602–643). У элемента ожидает URL из url|href|host, метку из name|title|balanser, ID из balanser|id|name; игнорирует show:false и disabled:true; URL дедуплицирует без завершающих slash, lower-case.
 
-## Неподтверждённые предположения
+**Схематический пример, выведенный из парсера (НЕ захваченный ответ):**
 
-Термины «кнопка», «единый поиск», «Lampac», «поток», а также поля качества и озвучки встречаются как требования проекта. Это не доказывает наличие соответствующих API. Не используйте придуманные endpoint-адреса, глобальные переменные, методы Lampa или структуру ответа в производственном коде.
+~~~json
+{
+  "life": {
+    "balancers": [
+      {"id": "example", "name": "Example", "url": "https://host.example/path"}
+    ]
+  }
+}
+~~~
 
-Обновлять этот документ при появлении проверяемых доказательств. Для неподтверждённого интерфейса сохранять статус **НЕ ПРОВЕРЕНО**, даже если код выглядит правдоподобно.
+### 2.2 Поисковый запрос
+
+**Место:** 645–681.
+
+Для каждого balancer URL собирается GET query. Если URL уже содержит ?, продолжение идёт с &, иначе с ?. Код добавляет:
+
+| Параметр | Источник |
+|---|---|
+| rjson=true | константа |
+| title | текущий query variant, encodeURIComponent |
+| original_title | mediaMeta.originalTitle, если непусто |
+| year | год, если известен |
+| imdb_id | IMDb ID, если известен |
+| kinopoisk_id | KP ID, если известен |
+| id | card ID (также записан как tmdbId) |
+| uid | mediaMeta.uid, если задан; TitleResolver в этом файле его не назначает |
+| serial | 1 для series, иначе 0 |
+| season, episode | только если truthy; TitleResolver их из карточки не копирует |
+
+Шаблон кода: <bal.url>?rjson=true&title=...&original_title=...&year=...&imdb_id=...&kinopoisk_id=...&id=...&uid=...&serial=0|1&season=...&episode=... (не все опциональные поля будут присутствовать). Точный путь после host берётся из balancer-ответа; фиксированного search endpoint в файле нет.
+
+Код пробует не более трёх queryVariants и делает ограниченный повтор того же URL один раз при ошибке, если включён retry (645–680). Но при первом варианте, давшем результаты, callback завершается; варианты названия не объединяются.
+
+### 2.3 Формы результата, которые умеет разбирать код
+
+**Место:** 686–805.
+
+JSON parser принимает корневой массив или объект с массивом data (724–727). Каждый item читает:
+
+- playback URL из url|file|stream;
+- качество из object quality map либо maxquality|quality_label|string quality;
+- дополнительные поля: title, year, translate|voice, lang|language, format|rip, subtitles|cc, hdr, dv|dolby_vision, season|s, episode|e (733–745, 773–805).
+
+При объекте quality каждая пара quality→URL становится отдельным вариантом. HTML fallback ищет элементы с class содержащим videos__item, атрибут data-json, затем пробует JSON с массивом / data / results / единичным объектом (692–721).
+
+**Схема для объяснения парсера, НЕ реальный ответ:**
+
+~~~json
+[
+  {
+    "title": "Example release",
+    "year": "2020",
+    "url": "https://media.example/video.m3u8",
+    "quality": {"1080p": "https://media.example/1080.m3u8"},
+    "translate": "Русский дубляж",
+    "lang": "ru",
+    "format": "WEB-DL",
+    "subtitles": "ru",
+    "season": 1,
+    "episode": 2
+  }
+]
+~~~
+
+В данном примере quality map создаст отдельный вариант, используя значение map как stream URL, а ключ как quality label. Синтетический host .example подчёркивает, что это не проверенный endpoint или поток.
+
+Нормализованный объект содержит pluginId, pluginName, sourceName, matchedTitle, year, qualityNum, qualityLabel, hdr, dv, voice, langCode, langLabel, format, subtitles, hasSubtitles, season, episode, streamUrl, qualityMap, canPlay, latency (773–805).
+
+## 3. Нативные плагины и custom adapters
+
+**Нативное делегирование:** 446–479. Программные searchMovie/searchSeries отвечают unsupported, getStreams сообщает unsupported. При выборе результата вызывается CardIntegration.launchPluginLiveButton(pluginId), которая ищет DOM элементы карточки по class/text hints и вызывает событие hover:enter (1326–1383). Это не извлекает результаты нативного источника и зависит от DOM/лейблов.
+
+**Публичный JavaScript facade:** 1964–1976, только при успешной инициализации:
+
+- window.ANDRPROD_API.version
+- registerAdapter(adapter), getAdapters()
+- search(card, method, scope, force, callbacks)
+- cancelSearch()
+- filterResults(list)
+- checkAllSources(onEach, onDone)
+- getDiagnostics()
+- storage
+
+Это глобальный объект в окне страницы, не HTTP API.
+
+Внешний adapter wrapper (486–559) ожидает id, optional name/url/description, методы getSourceInfo(), isAvailable(cb) или check(cb), searchMovie/searchSeries/search(...), getStreams, play/open. ВАЖНО: фактический вызов поиска — fn(mediaMeta, mediaMeta.queryVariants, callback) (538–550); переданный opts не передаётся, хотя wrapper передаёт opts в invokeCustomSearch. Callback интерпретируется как (err, list).
+
+## 4. Вызовы Lampa, обнаруженные в коде
+
+Все позиции — source evidence only; совместимость не проверена.
+
+| Вызов/поверхность | Места | Зачем используется |
+|---|---:|---|
+| Lampa.Storage.get/set | 147–232; 887 | Настройки и список установленных plugins. |
+| Lampa.TMDB.image('t/p/w300' + poster_path) | 247–256 | URL постера, если доступен. |
+| Lampa.Reguest, timeout/silent/clear | 561–600 | GET, response/error callbacks, таймаут/отмена. |
+| Lampa.Player.play({url,title,quality,subtitles}) | 847–865 | Запуск прямого потока; fallback к live-кнопке. |
+| Lampa.Listener.follow('full', callback) и ('app', callback) | 1265–1280, 2047–2055 | Обнаружение завершённого full-card и app ready. Проверка типа complite (написано так в исходнике). |
+| Lampa.Activity.push({...}), backward() | 1307–1317, 1363–1378, 1618–1628 | Открытие компонентов и возврат для нажатия source button. |
+| Lampa.Component.add(name, constructor) | 2007–2017 | Регистрация hub/search components. |
+| Lampa.SettingsApi.addComponent/addParam | 1804–1879 | Настройки, actions и diagnostics. |
+| Lampa.Select.show({...}) | 1476–1486, 1721–1744 | Scope и source actions. |
+| Lampa.Scroll({...}) | 1395, 1633 | Прокрутка UI. |
+| Lampa.Controller.add/toggle/collectionSet/collectionFocus | 1577–1602, 1683–1687, 1781–1793 | Пульт, список и фокус. |
+| Lampa.Noty.show(text) | 1352, 1374, 1661–1668, 1736 | Уведомления. |
+| Lampa.Manifest.plugins = {...} | 1981–1995 | Установка plugin manifest (см. замечание ниже). |
+
+window.$/jQuery также требуется при старте (1997–2002); используется для поиска DOM, создания HTML, событий и CSS injection.
+
+## 5. Проверенные факты vs не проверено
+
+**Подтверждено непосредственно содержимым JS:** названные функции, подстроки endpoints/query, callback signatures в коде, parser field names, whitelist и flow указанной версии файла.
+
+**Не подтверждено:** наличие этих интерфейсов в конкретной Lampa, корректность событий/сигнатур, реальная схема /lite/events и balancer responses, CORS/auth, существование/доступность source servers, player payload compatibility, фактическая работа на Android/TV/Tizen/webOS. Примеры выше — схема parser inputs, не ответ реального источника.
