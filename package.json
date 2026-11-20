@@ -1,6 +1,6 @@
 {
   "name": "blue-button",
-  "version": "0.1.5",
+  "version": "0.1.4",
   "private": true,
   "description": "Unified Lampac result chooser for Lampa",
   "scripts": {
