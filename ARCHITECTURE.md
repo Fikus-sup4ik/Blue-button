@@ -99,7 +99,7 @@ bootstrap / startPlugin
 - `src/lampa-bridge.js`: тонкий слой над подтверждёнными Manifest, Component, Activity, Reguest и Player surfaces.
 - `src/card-integration.js`: получить card context из manifest action и передать его в Activity.
 - `src/components/results.js`: состояния поиска, список результатов и выбор.
-- `src/adapters/lampac.js`: metadata events, memkey/poll, provider HTML, извлечение известных play-элементов.
+- `adapters/lampac.js` (top-level): metadata events, memkey/poll, provider HTML, извлечение известных play-элементов.
 - `src/normalizer.js`: внутренняя схема подтверждённых результатов и URL validation.
 - `src/player-bridge.js`: передача выбранного прямого URL в документированный Player API.
 - `tests/`: unit fixtures и проверки независимых от Lampa функций.
@@ -114,3 +114,6 @@ bootstrap / startPlugin
 Порядок реализации после review: unit tests URL builder/parser → bootstrap и manifest action → экран результатов → Lampac lifecycle/cancel → provider parser → выбор → Player.play → живой acceptance run. Совместимость и работоспособность до этого не заявляются.
 
 См. [API_DOCUMENTATION.md](API_DOCUMENTATION.md), [TESTING.md](TESTING.md). Первичные источники зафиксированы по commit `94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`.
+
+
+Примечание к раскладке: для первого прототипа каталоги верхнего уровня — `src/`, `adapters/`, `tests/`, `dist/`; ранний общий эскиз `src/adapters/` в аудиторском разделе не является выбранной раскладкой и superseded этой схемой.
