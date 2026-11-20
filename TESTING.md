@@ -35,6 +35,7 @@ Fixture с `.synthetic` является вымышленным примером
 ## Минимальный ручной сценарий в Lampa
 
 1. Установить `dist/blue-button.js` в тестовую Lampa и открыть diagnostics/консоль при наличии.
+   Для script-загрузки использовать `https://fikus-sup4ik.github.io/Blue-button/dist/blue-button.js`, а не raw.githubusercontent.com: проверка текста и script-загрузка в Lampa — разные операции.
 2. Открыть movie-card и вызвать длинное нажатие/«ещё»: должен появиться один пункт `BLUE-BUTTON`.
 3. Указать origin Lampac в настройках Blue-button и открыть пункт. Зафиксировать redacted URL `/lite/events`.
 4. Проверить, что `/lifeevents` продолжается после первого `online` до `ready` либо deadline, а `seen` равен длине полного server `online`.

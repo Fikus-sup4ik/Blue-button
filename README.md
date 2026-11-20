@@ -6,16 +6,16 @@
 
 Версия: **0.1.5**. Добавлено меню источников и реестр адаптеров. Bundle содержит исполняемый namespace-маркер `Lampa.Manifest` для проверки расширений Lampa. Lampac остаётся единственным подтверждённым и включённым адаптером; BWA Online, Gbay и Alpac отображаются как неподтверждённые и не выполняют сетевых запросов.
 
-Для отдельной проверки загрузчика Lampa опубликован независимый файл `dist/blue-button-minimal-test.js`. Он не входит в основную сборку и не использует Promise, `globalThis` или внешние библиотеки. Установка: `https://raw.githubusercontent.com/Fikus-sup4ik/Blue-button/main/dist/blue-button-minimal-test.js`. На телевизоре нужно отдельно проверить уведомление «Blue-button minimal test загружен» и действие в контекстном меню карточки.
+Для отдельной проверки загрузчика Lampa опубликован независимый файл `dist/blue-button-minimal-test.js`. Он не входит в основную сборку и не использует Promise, `globalThis` или внешние библиотеки. Для установки используйте GitHub Pages URL с JavaScript MIME: `https://fikus-sup4ik.github.io/Blue-button/dist/blue-button-minimal-test.js`. Raw GitHub URL намеренно не рекомендуется: он отдаёт `text/plain`, из-за чего `Utils.putScriptAsync()` получает ошибку script-загрузки при HTTP 200.
 
 ## Установка
 
 1. В Lampa откройте настройки плагинов и добавьте URL:
-   `https://raw.githubusercontent.com/Fikus-sup4ik/Blue-button/865cb69e0bd8035f9f9015386ce37672aa2e5abb/dist/blue-button.js`
+   `https://fikus-sup4ik.github.io/Blue-button/dist/blue-button.js`
 2. В настройках Blue-button укажите URL своего сервера Lampac.
 3. Откройте карточку фильма или сериала, затем context menu и выберите **BLUE-BUTTON**.
 
-Файл доступен в репозитории: [dist/blue-button.js](dist/blue-button.js). URL установки нужно проверить на целевой Lampa до объявления рабочим.
+Файл доступен в репозитории: [dist/blue-button.js](dist/blue-button.js). Установка выполняется через GitHub Pages URL, который отдаёт `application/javascript`; raw-ссылка GitHub для установки не используется.
 
 ## Сборка и тесты
 
