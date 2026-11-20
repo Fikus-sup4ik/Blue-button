@@ -6,7 +6,7 @@
 
 ## Автоматические тесты 0.1.1
 
-Запуск: `npm test` или `node scripts/test.js`.
+Запуск: `npm test` или `node scripts/test.js`. В текущей рабочей среде `npm` не установлен, поэтому фактически выполнен эквивалент `node scripts/test.js`; `npm run build` аналогично заменён на `node scripts/build.js`.
 
 Последний локальный запуск: **13 из 13 пройдены**.
 
