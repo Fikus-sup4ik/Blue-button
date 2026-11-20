@@ -185,6 +185,16 @@ window.$/jQuery также требуется при старте (1997–2002);
 
 ## Проверка первичных контрактов для прототипа (2026-11-20)
 
+## Реализация Blue-button 0.1.0
+
+Реализованный контракт адаптера: `search(media) → Promise<{status, items}>`, `cancel()`. Статусы: `ok`, `empty`, `cancelled`, `error`. Один adapter не должен завершать общий поиск ошибкой: SearchManager изолирует его ошибку и оставляет результаты остальных.
+
+Внутренний normalized result содержит `id`, `source`, `provider`, `title`, `quality`, `translation`, `type`, `season`, `episode`, `subtitles`, `url`, `playMethod`, `available`, `metadata`. Пустые метаданные не выдумываются. Единственная допустимая в 0.1.0 форма: `method: "play"` с абсолютным `http(s)` URL.
+
+Фактический flow Lampac в `adapters/lampac.js`: `/lite/events` с известными параметрами media и `life=true` → обязательный `memkey` → ограниченный long-poll `/lifeevents` с `seen` → provider URL из `online[].url` → text HTML → безопасное чтение `data-json` → normalizer. Poll ограничен `maxPolls` (по умолчанию 20), transport `clear()` вызывается при отмене. `call`, `link`, RCH, buttons озвучек и дерево серий не реализованы.
+
+Player bridge передаёт `url`, `title`, `quality`, `subtitles` в `Lampa.Player.play`. Вызов защищён проверкой `http(s)` URL, но фактическое воспроизведение на устройстве не проверялось.
+
 Источники — документация и исходники LampaC/Lampac по commit [`94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`](https://github.com/lampame/LampaC/commit/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496). Это доказывает наличие API в указанном source snapshot, но не совместимость каждой установленной Lampa версии и не успешный runtime вызов.
 
 | Использование | Контракт в первичном источнике | Источник |

@@ -2,7 +2,24 @@
 
 ## Статус
 
-На 2026-11-20 исходный файл ANDRPROD DD 4.0.1 прочитан полностью и проанализирован статически. Это не является тестом плагина. Реальные тесты в Lampa и на серверах Lampac не выполнялись; ни исходный ANDRPROD, ни будущий Blue-button не объявляются работающими.
+На 2026-11-20 реализована версия Blue-button 0.1.0. Реальные тесты в Lampa и на серверах Lampac не выполнялись; работа плагина на устройстве и с конкретным сервером не объявляется подтверждённой.
+
+## Автоматические тесты 0.1.0
+
+Запуск: `npm test` или `node scripts/test.js`.
+
+Последний локальный запуск: **10 из 10 пройдены**.
+
+- movie/tv metadata resolver;
+- нормализация прямого `method: play` и отклонение небезопасного URL;
+- lifeevents parser и provider `data-json` parser;
+- кодирование `/lite/events` query;
+- дедупликация по URL и ключ cache для разных серий;
+- полный flow Lampac adapter через test transport: memkey → lifeevents → HTML provider → normalized item.
+
+Fixture с `.synthetic` является вымышленным примером структуры и не имитирует работу production-сервера. Тестовый transport не является реальной Lampa.
+
+Сборка: `npm run build` или `node scripts/build.js`. Локальная проверка собрала `dist/blue-button.js` размером 18 384 байт. Для каждого файла также требуется запуск `node --check` перед выпуском.
 
 Источник статического аудита: Andrprod-test-v4.0.1.js, 2 059 строк, SHA-256 2BA22C4C96A94A1B30D15F5A67E1F28FB1390662ABA9521ABAE54847DA18A332. API и ссылки на строки см. API_DOCUMENTATION.md.
 

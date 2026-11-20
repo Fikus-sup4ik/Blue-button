@@ -1,0 +1,6 @@
+;(function (root) {
+  'use strict'; var BB = root.BlueButton;
+  BB.SearchManager = function (options) { options = options || {}; this.adapters = options.adapters || []; this.cache = options.cache || new BB.Cache(options.cacheTtl); this.active = null; };
+  BB.SearchManager.prototype.cancel = function () { if (this.active) this.active.cancelled = true; this.adapters.forEach(function (a) { if (a.cancel) a.cancel(); }); };
+  BB.SearchManager.prototype.search = function (media) { var self = this, cached = self.cache.get(media); self.cancel(); if (cached) return Promise.resolve({status:'ok',items:cached,cached:true}); self.active = {cancelled:false}; return Promise.all(self.adapters.map(function (adapter) { return adapter.search(media).catch(function (error) { BB.Diagnostics.add('error', 'Adapter failed', {adapter:adapter.id,error:String(error)}); return {status:'error',items:[]}; }); })).then(function (results) { if (self.active.cancelled) return {status:'cancelled',items:[]}; var items = []; results.forEach(function (result) { items = items.concat(result.items || []); }); items = BB.Normalizer.deduplicate(items); if (items.length) self.cache.set(media, items); return {status:items.length ? 'ok' : 'empty',items:items,cached:false}; }); };
+}(typeof window !== 'undefined' ? window : globalThis));

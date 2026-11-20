@@ -1,0 +1,10 @@
+{
+  "name": "blue-button",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Unified Lampac result chooser for Lampa",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node scripts/test.js"
+  }
+}
