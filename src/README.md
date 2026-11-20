@@ -8,6 +8,6 @@ Planned first prototype modules; no runtime code has been implemented yet:
 - `components/results.js` — search/result states and selection UI.
 - `normalizer.js` — validate and normalize provider entries.
 - `player-bridge.js` — hand a selected result to the Lampa player.
-- `adapters/lampac.js` — the only planned source adapter in the first slice.
+Source adapters live in the top-level `adapters/` directory; see its README for the Lampac contract.
 
 The implementation waits for review of the API contract and this layout.
