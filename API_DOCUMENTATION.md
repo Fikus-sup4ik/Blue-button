@@ -157,3 +157,27 @@ window.$/jQuery также требуется при старте (1997–2002);
 **Подтверждено непосредственно содержимым JS:** названные функции, подстроки endpoints/query, callback signatures в коде, parser field names, whitelist и flow указанной версии файла.
 
 **Не подтверждено:** наличие этих интерфейсов в конкретной Lampa, корректность событий/сигнатур, реальная схема /lite/events и balancer responses, CORS/auth, существование/доступность source servers, player payload compatibility, фактическая работа на Android/TV/Tizen/webOS. Примеры выше — схема parser inputs, не ответ реального источника.
+
+
+## 6. Найденные дефекты и зоны риска исходника
+
+Это findings статического чтения, не результаты runtime-тестов:
+
+- **Manifest inconsistency (1981–1995 vs 891–894):** registerManifest присваивает Lampa.Manifest.plugins одиночный объект, а сканер добавляет эти данные только если значение — Array. Возможно затирание ожидаемого списка plugins. Проверить контракт Lampa и порядок вызовов.
+- **Metadata неполна (258–275):** TitleResolver не переносит season, episode или uid, хотя query builder умеет их добавлять (661–664). Для serial поиска параметры обычно пусты.
+- **Неиспользуемый best mode:** настройки принимают auto/manual/best (173–179), но create() запускает поиск для любого значения кроме manual (1404–1410); в файле нет реализации BestChoiceEngine, несмотря на заголовочный комментарий строки 16.
+- **Неполный voice filter:** настройка multi зарегистрирована, но FilterEngine проверяет только dub и orig (1017–1022).
+- **Неиспользуемый hideUnavailable:** getter и настройка присутствуют (198, 1846), но вызов getter не найден.
+- **Custom adapter argument mismatch (486–559):** search вызывается как fn(mediaMeta, queryVariants, callback), opts теряется; контракт должен быть однозначно исправлен.
+- **Variants short-circuit (645–680):** дальнейшие title variants запрашиваются только когда предыдущий дал пустой список; совпадения не агрегируются.
+- **Cache key collisions (1057–1073):** ключ не включает год/season/episode; возможны неверные совпадения кэша для одноимённых релизов и серий.
+- **Stale handles (1076–1095, 575–581):** completed net handles/timers не удаляются из tracking arrays до следующей отмены, что может удерживать ссылки/очищать старые handles позднее.
+- **Potentially hanging health checks (1233–1253):** для custom adapters нет внешнего timeout вокруг isAvailable callback.
+- **Misleading native integration fallback (358–439, 446–479):** kind lampac_or_native создаётся Lampac adapter, хотя текст reason обещает делегирование; failure path возвращает error/unsupported, но не вызывает native-button adapter.
+- **Premature success for async delegation (1326–1378):** после Activity.backward() функция возвращает true до нахождения и активации кнопки.
+- **Fragile content parsing and UI bridge (692–721, 1326–1383):** HTML regex и DOM class/text hints зависят от точной разметки и локализации.
+- **Static support labels (403–415):** supported/integrationLevel задаются без доказательства успешного endpoint check и могут переоценивать уровень интеграции.
+- **Input safety (1422–1425, 847–865):** poster вставляется в inline style; playback URL напрямую передаётся в Player.play. Нужна проверка схемы/экранирование.
+- **Filter meaning mismatch:** sort speed сравнивает latency результата (latency записан одинаковым для вариантов одного ответа адаптера), поэтому порядок может не отражать скорость отдельных stream URLs.
+
+Исправления следует делать отдельно после подтверждения контрактов Lampa и зафиксированных fixtures: исправить несоответствия metadata/adapters/cache/lifecycle, явно моделировать best selection и voice multi, валидировать URL/HTML, а native fallback показывать как действие, не как найденный playback result.
