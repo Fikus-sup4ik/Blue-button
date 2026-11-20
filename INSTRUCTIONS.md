@@ -235,3 +235,44 @@ Blue-button/
 - тесты пройдены на каждой заявленной платформе.
 
 Функция не считается готовой без воспроизводимого теста или прямого подтверждения.
+
+
+## 17. Технические сведения из аудита ANDRPROD DD 4.0.1
+
+Источник: приложенный Andrprod-test-v4.0.1.js (2 059 строк, SHA-256 2BA22C4C96A94A1B30D15F5A67E1F28FB1390662ABA9521ABAE54847DA18A332). Это статический анализ исходника. Вызовы, найденные в файле, не доказывают доступность API в конкретной версии Lampa или работоспособность на сервере.
+
+### Архитектурные наблюдения
+
+Старый плагин собран одним ES5 IIFE и делит обязанности на Diagnostics, BrandIcons, StorageManager, TitleResolver, AdapterFactory, SourceRegistry, FilterEngine, SearchCache, UnifiedSearchEngine, CardIntegration, SearchComponent, HubComponent, SettingsIntegration и bootstrap. Карта модулей и строки находятся в ARCHITECTURE.md.
+
+Идеи для нового проекта: разделение адаптеров, нормализации, поиска, фильтрации и UI; отображение статуса каждого источника; ограниченные timeout/retry; явное различение программной интеграции и ручного перехода в закрытый плагин. Переносить следует поведение после независимой реализации и теста, а не старый файл целиком.
+
+### Обнаружение и поиск по Lampac-like протоколу
+
+В исходнике плагины читаются из Lampa.Storage.get('plugins', []) и, если это массив, Lampa.Manifest.plugins. Имена/URL сопоставляются с локальным whitelist по подстрокам. Для найденного origin вызывается GET /lite/events?life=true. Парсер ищет поля url/href/host и несколько candidate-массивов (channels, results, online, balancers, data и life.*). Затем к balancer URL добавляются rjson=true, title, original_title, year, imdb_id, kinopoisk_id, id, uid, serial, season и episode — только при наличии соответствующих значений.
+
+Ответный parser принимает корневой JSON array либо объект с data array; item URL читается из url/file/stream, качество из quality map или строковых quality полей. Имеется HTML fallback по class videos__item и data-json. Это схемы, которые код пытается читать; реальные ответы и текущая совместимость протокола не подтверждены. Детали и номера строк приведены в API_DOCUMENTATION.md.
+
+### Наблюдаемые вызовы Lampa
+
+В коде обнаружены Lampa.Storage, TMDB.image, Reguest (написание в исходнике), Player.play, Listener.follow, Activity.push/backward, Component.add, SettingsApi.addComponent/addParam, Select.show, Scroll, Controller и Noty. Перед реализацией Blue-button проверить их по актуальному первичному источнику Lampa и в живом приложении; не считать эти имена доказанными или совместимыми только по старому плагину.
+
+### Ограничения и дефекты старой реализации, учитывать при разработке
+
+- TitleResolver не копирует season, episode или uid в metadata, поэтому одноимённые query-параметры обычно не будут отправляться.
+- Параметр режима best есть в настройках, но отдельного BestChoiceEngine в исполняемом коде нет; режим best проходит тот же автоматический поиск, что и auto.
+- Фильтр multi объявлен, но отдельная ветка обработки многоголосой озвучки отсутствует; hideUnavailable имеет getter/настройку, но его применение в поисковом UI не обнаружено.
+- Custom adapter search вызывается как fn(mediaMeta, queryVariants, callback); opts не передаётся, что может нарушить ожидаемый контракт стороннего adapter.
+- Перебор title variants останавливается на первом варианте, давшем результат; варианты не объединяются.
+- Cache key не содержит год и для сериалов сезон/эпизод; возможны неверные cache hits между разными объектами.
+- Сетевые handles/timers добавляются в списки активного поиска и очищаются только при следующей отмене; после завершения остаются ссылки до следующего поиска.
+- Health check custom adapter может не завершиться, если adapter не вызовет callback; нет внешнего watchdog на все adapter types.
+- Присвоение Lampa.Manifest.plugins объекту в registerManifest расходится с тем, что SourceRegistry позже принимает Manifest.plugins только как Array; проверить риск затирания/несовместимости.
+- lampac_or_native создаётся как Lampac adapter, хотя комментарий обещает fallback к native-кнопке; фактическая ветка fallback не реализована для этого adapter.
+- launchPluginLiveButton после backward() возвращает true до того, как кнопка найдена; вызывающий код может считать асинхронную попытку успешной.
+- DOM поиск live-кнопок по тексту/class и событие hover:enter хрупки к версиям и локализации.
+- HTML fallback и parser assumptions требуют fixtures реальных ответов; malformed/новые schemas могут дать пустой результат.
+- Флаг supported/integrationLevel статичен и не доказывает, что API endpoint отвечает.
+- Код вставляет poster URL в inline style; значение нужно проверять/экранировать, а playback URL ограничить разрешёнными схемами.
+
+Эти наблюдения — findings статического чтения; до воспроизведения в Lampa считать их рисками/кодовой логикой, не runtime-результатами.
