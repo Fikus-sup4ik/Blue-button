@@ -163,7 +163,8 @@ window.$/jQuery также требуется при старте (1997–2002);
 
 Это findings статического чтения, не результаты runtime-тестов:
 
-- **Manifest inconsistency (1981–1995 vs 891–894):** registerManifest присваивает Lampa.Manifest.plugins одиночный объект, а сканер добавляет эти данные только если значение — Array. Возможно затирание ожидаемого списка plugins. Проверить контракт Lampa и порядок вызовов.
+- **Manifest:** прежнее сомнение об array/object снимается: первичная документация Lampa описывает `Lampa.Manifest.plugins` как добавляющий setter. Старую сборку всё равно проверить на устройстве.
+
 - **Metadata неполна (258–275):** TitleResolver не переносит season, episode или uid, хотя query builder умеет их добавлять (661–664). Для serial поиска параметры обычно пусты.
 - **Неиспользуемый best mode:** настройки принимают auto/manual/best (173–179), но create() запускает поиск для любого значения кроме manual (1404–1410); в файле нет реализации BestChoiceEngine, несмотря на заголовочный комментарий строки 16.
 - **Неполный voice filter:** настройка multi зарегистрирована, но FilterEngine проверяет только dub и orig (1017–1022).
@@ -181,3 +182,36 @@ window.$/jQuery также требуется при старте (1997–2002);
 - **Filter meaning mismatch:** sort speed сравнивает latency результата (latency записан одинаковым для вариантов одного ответа адаптера), поэтому порядок может не отражать скорость отдельных stream URLs.
 
 Исправления следует делать отдельно после подтверждения контрактов Lampa и зафиксированных fixtures: исправить несоответствия metadata/adapters/cache/lifecycle, явно моделировать best selection и voice multi, валидировать URL/HTML, а native fallback показывать как действие, не как найденный playback result.
+
+## Проверка первичных контрактов для прототипа (2026-11-20)
+
+Источники — документация и исходники LampaC/Lampac по commit [`94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`](https://github.com/lampame/LampaC/commit/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496). Это доказывает наличие API в указанном source snapshot, но не совместимость каждой установленной Lampa версии и не успешный runtime вызов.
+
+| Использование | Контракт в первичном источнике | Источник |
+|---|---|---|
+| Карточное действие | `Lampa.Manifest.plugins = {type:'video', onContextMenu(card), onContextLauch(card)}`; setter добавляет запись. Имя `onContextLauch` написано так в документации. | [manifest/menu](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/09-manifest-menu.md`) |
+| Окно и компонент | `Lampa.Component.add(name, constructor)`; `Lampa.Activity.push({url,title,component,...data})`. | [navigation](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/07-navigation.md`) |
+| Сеть | `new Lampa.Reguest()`; `get(url,onSuccess,onError,postData?)`, `silent(url,onSuccess,onError,postData?,params?)`, `native(url,onSuccess,onError,postData?,params?)`; `.timeout(ms)`, `.clear()`. Для HTML provider route официальный клиент использует native text mode; для JSON — silent. | [network docs](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/04-storage-network.md`), [client](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/Lampac/Online/plugin.js`) |
+| Проигрыватель | Core `Lampa.Player.play(data)`; core JSDoc описывает url/title и опциональные playback fields, включая quality/subtitles. Передача реального provider URL должна быть испытана на целевой платформе. | [player docs](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/10-player.md`), [core](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/src/interaction/player.js`) |
+| Готовность приложения | `window.appready` или `Lampa.Listener.follow('app', ...ready...)`. | [getting started](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/01-getting-started.md`), [events](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/03-events.md`) |
+
+### Lampac NextGen protocol
+
+Подтверждено серверными [online API docs](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/Lampac/docs/api/online.mdx`), [module docs](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/Lampac/docs/modules/online.mdx`), [controller](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/Lampac/Online/OnlineApi.cs`) и клиентом [Online plugin.js](`https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/Lampac/Online/plugin.js`).
+
+- `GET /lite/events` принимает metadata поиска (доступные id, title, original_title, year, source, serial); официальный пример добавляет `life=true`.
+- С `life=true` начальный ответ даёт `life:true` и `memkey`; затем используется `/lifeevents?memkey=...&seen=...` с поисковым контекстом. Это long-poll.
+- Документный shape life event: `{ready,tasks,head,pending,online:[{name,url,index,show,balanser,rch}]}`. Значения — иллюстративный пример документации, а не live capture.
+- По `online[].url` официальный клиент получает provider HTML. Он читает `.videos__item` / `.videos__button` и `data-json`; HTML конкретных провайдеров может отличаться.
+- Provider route параметры зависят от источника; не объявлять их одной универсальной схемой.
+- Первый адаптер ограничивает playback `method:'play'` с непустым URL. `call`, `link`, RCH и series/voice navigation не включены до отдельной проверки.
+
+Старый ANDRPROD запрос `/lite/events?life=true` без media metadata нельзя переносить: это не клиентский поисковый запрос. Origin должен задаваться настройкой/пользователем, metadata — карточкой. Секреты не коммитить и не писать в логи.
+
+### Коррекция прежнего замечания по Manifest
+
+Утверждение, что присваивание `Lampa.Manifest.plugins` объекту затирает реестр и конфликтует с массивом, не подтверждено: первичная документация описывает `Lampa.Manifest.plugins` как добавляющий setter. Снимаю этот finding. Старая версия и фактическая регистрация всё равно требуют проверки на устройстве.
+
+### Требует целевой проверки
+
+Lampa build/version; фактический card payload и повторные вызовы; lifecycle Activity/Component; Reguest поведение на HTTP/CORS/timeout/cancel; Lampac конкретной версии/auth; реальные provider HTML, сериалы и потоки; прямой Player.play с subtitle; фокус пульта и cleanup. В проекте пока нет сетевых захватов живого сервера.
