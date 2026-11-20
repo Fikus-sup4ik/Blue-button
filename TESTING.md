@@ -38,3 +38,29 @@
 ## Критерий принятия первого вертикального среза
 
 В реальной Lampa зафиксировать версию/устройство и пройти: карточка → единственная кнопка → запрос к реально доступному тестовому source → настоящий результат → выбор → фактическое воспроизведение; затем возврат, повторный поиск, cancel и закрытие без зависших callbacks/listeners. В отчёте записать шаги/результаты и redacted request/response. До этого статус: **интеграция не проверена**.
+
+## План тестов первого прототипа (2026-11-20)
+
+Это план, не отчёт о выполненных тестах: код прототипа ещё не написан. Fixtures с именем `.synthetic` вручную собраны по документированным полям и не являются ответами реального сервера.
+
+### Можно проверить без Lampa/Lampac
+
+1. Builder URL: query encoding, отсутствующие ID, serial, уже имеющийся query, отсутствие credentials в логах.
+2. Разбор life events: memkey, seen, ready/pending/online и malformed/incomplete fields.
+3. Provider HTML parser: извлечение data-json из известного markup и отказ на неизвестном формате.
+4. Normalizer: поддержка только method=play, URL scheme validation, optional title/quality/subtitles.
+5. Timeout/cancel/error logic с fake transport — только чистые функции; это не докажет поведение Lampa Reguest.
+
+### Обязательно на реальном устройстве/сборке Lampa
+
+- Загрузка, readiness, повторная инициализация.
+- Manifest action ровно один раз для movie/series и реальный card payload.
+- Activity/Component lifecycle и cleanup.
+- Reguest silent/native, получение text, HTTP error, timeout/cancel.
+- Реальный Lampac events/memkey/lifeevents и provider HTML на известной версии сервера.
+- Выбор результата запускает реальный поток через Player.play; штатные Back/return.
+- Пульт/focus, mouse/keyboard и отдельные заявленные платформы.
+
+### Acceptance run
+
+Записать устройство, версию Lampa/Lampac, время, redacted requests/responses и результат каждого шага: карточка → кнопка → events/memkey → lifeevents → provider HTML → список → выбор → воспроизведение. Синтетические fixtures и unit tests не доказывают интеграцию.
