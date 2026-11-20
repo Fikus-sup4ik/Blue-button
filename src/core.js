@@ -1,8 +1,10 @@
 ;(function (root) {
   'use strict';
   var BB = root.BlueButton = root.BlueButton || {};
-  BB.VERSION = '0.1.4';
+  BB.VERSION = '0.1.5';
   BB.NAME = 'Blue-button';
+  /* Keep an executable Lampa namespace marker for Extension.check(). */
+  if (typeof Lampa !== 'undefined' && Lampa.Manifest) { BB.lampaNamespaceDetected = true; }
   BB.COMPONENT = 'blue_button_results';
   BB.DIAGNOSTICS_COMPONENT = 'blue_button_diagnostics';
   if (root.blue_button_version !== BB.VERSION) { root.blue_button_ready = false; root.blue_button_initializing = false; root.blue_button_version = BB.VERSION; }
