@@ -185,15 +185,17 @@ window.$/jQuery также требуется при старте (1997–2002);
 
 ## Проверка первичных контрактов для прототипа (2026-11-20)
 
-## Реализация Blue-button 0.1.0
+## Реализация Blue-button 0.1.1
 
 Реализованный контракт адаптера: `search(media) → Promise<{status, items}>`, `cancel()`. Статусы: `ok`, `empty`, `cancelled`, `error`. Один adapter не должен завершать общий поиск ошибкой: SearchManager изолирует его ошибку и оставляет результаты остальных.
 
 Внутренний normalized result содержит `id`, `source`, `provider`, `title`, `quality`, `translation`, `type`, `season`, `episode`, `subtitles`, `url`, `playMethod`, `available`, `metadata`. Пустые метаданные не выдумываются. Единственная допустимая в 0.1.0 форма: `method: "play"` с абсолютным `http(s)` URL.
 
-Фактический flow Lampac в `adapters/lampac.js`: `/lite/events` с известными параметрами media и `life=true` → обязательный `memkey` → ограниченный long-poll `/lifeevents` с `seen` → provider URL из `online[].url` → text HTML → безопасное чтение `data-json` → normalizer. Poll ограничен `maxPolls` (по умолчанию 20), transport `clear()` вызывается при отмене. `call`, `link`, RCH, buttons озвучек и дерево серий не реализованы.
+Фактический flow Lampac в `adapters/lampac.js`: `/lite/events` с известными параметрами media и `life=true` → обязательный `memkey` → ограниченный long-poll `/lifeevents` с `seen` → provider URL из `online[].url` → text HTML → безопасное чтение `data-json` → normalizer. `seen` обновляется значением полного server `online.length`; `show:false` не используется как playable provider. Poll ограничен `maxPolls` (по умолчанию 20) и `maxDuration` (15 секунд), а transport `clear()` и cancellation race вызываются при отмене. Это соответствует официальному клиенту, который продолжает запросы до `ready` или 15-секундного deadline. `call`, `link`, RCH, buttons озвучек и дерево серий не реализованы.
 
-Player bridge передаёт `url`, `title`, `quality`, `subtitles` в `Lampa.Player.play`. Вызов защищён проверкой `http(s)` URL, но фактическое воспроизведение на устройстве не проверялось.
+Player bridge передаёт `url`, `title`, `quality`/quality map, `subtitles`, `season`, `episode` в `Lampa.Player.play`. Вызов защищён проверкой `available`, `playMethod === 'play'` и `http(s)` URL, но фактическое воспроизведение на устройстве не проверялось.
+
+В 0.1.1 настройки регистрируют раздел через `SettingsApi.addComponent`, параметр через `addParam`, а значение читается через `Storage.field`. Component `create()` возвращает `render()`, `destroy()` снимает result handlers, удаляет DOM и отменяет поиск. SearchManager хранит token конкретного запуска, поэтому поздний callback старого поиска не может отрисовать новый экран.
 
 Источники — документация и исходники LampaC/Lampac по commit [`94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`](https://github.com/lampame/LampaC/commit/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496). Это доказывает наличие API в указанном source snapshot, но не совместимость каждой установленной Lampa версии и не успешный runtime вызов.
 
