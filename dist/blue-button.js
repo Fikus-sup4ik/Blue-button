@@ -210,6 +210,30 @@
      onContextLauch (the misspelling is part of Lampa's public contract). */
   BB.LampaBridge.prototype.registerManifestAction = function (title, handler) { var lampa = this.lampa; if (!lampa || !lampa.Manifest) throw new Error('Lampa.Manifest is unavailable'); lampa.Manifest.plugins = { type:'video', name:title, description:'Поиск доступных потоков через Blue-button', onContextMenu:function () { return true; }, onContextLauch:function (card) { handler(card); } }; return true; };
   BB.LampaBridge.prototype.registerCardAction = function (handler) { return this.registerManifestAction('BLUE-BUTTON', handler); };
+  BB.LampaBridge.prototype.registerInlineCardButton = function (handler) {
+    var lampa = this.lampa, self = this;
+    if (!lampa || !lampa.Listener || !lampa.Listener.follow) throw new Error('Lampa.Listener.follow is unavailable');
+    if (BB.runtime.inlineButtonRegistered) return true;
+    BB.runtime.inlineButtonRegistered = true;
+    lampa.Listener.follow('full', function (event) {
+      try {
+        if (!event || event.type !== 'complite' || !event.object || !event.object.activity || !event.object.activity.render) return;
+        var activity = event.object.activity;
+        var view = activity.render();
+        if (!view || !view.find || view.find('.blue-button-inline').length) return;
+        var card = event.data && event.data.movie ? event.data.movie : (event.object.data && event.object.data.movie ? event.object.data.movie : null);
+        var button = root.$ ? root.$('<div class="full-start__button selector blue-button-inline" data-subtitle="Blue-button" style="color:#2f80ed"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16v4H4zM4 10h10v4H4zM4 16h16v4H4z"/></svg><span>BLUE-BUTTON</span></div>') : null;
+        if (!button) throw new Error('jQuery is unavailable for card button');
+        button.on('hover:enter click', function () { handler(card || (event.object.data && event.object.data.movie) || {}); });
+        var anchor = view.find('.view--torrent').first();
+        if (anchor.length) anchor.after(button);
+        else view.find('.buttons--container').first().append(button);
+      } catch (error) {
+        if (BB.Diagnostics && BB.Diagnostics.error) BB.Diagnostics.error('inline_card_button', error);
+      }
+    });
+    return true;
+  };
   BB.LampaBridge.prototype.registerDiagnosticsMenuFallback = function (handler) { if (!root.$) throw new Error('Lampa menu fallback requires jQuery'); var button = root.$('<li class="menu__item selector"><div class="menu__text">Диагностика Blue-button</div></li>'); button.on('hover:enter', handler); var list = root.$('.menu .menu__list').eq(0); if (!list.length) throw new Error('Lampa main menu is unavailable'); list.append(button); return true; };
   BB.LampaBridge.prototype.addComponent = function (name, factory) { if (this.lampa.Component && this.lampa.Component.get && this.lampa.Component.get(name)) return; if (!this.lampa.Component || !this.lampa.Component.add) throw new Error('Lampa.Component.add is unavailable'); this.lampa.Component.add(name, factory); };
   BB.LampaBridge.prototype.openResults = function (card, adapterIds) { this.lampa.Activity.push({url:'', title:card && (card.title || card.name) || 'BLUE-BUTTON', component:BB.COMPONENT, page:1, movie:card, adapterIds:adapterIds}); };
@@ -271,7 +295,7 @@
 /* src/settings.js */
 ;(function (root) {
   'use strict'; var BB = root.BlueButton;
-  BB.Settings = { key:'blue_button_lampac_origin', diagnosticsKey:'blue_button_diagnostics', getOrigin:function (lampa) { if (!lampa || !lampa.Storage) return ''; if (lampa.Storage.field) return lampa.Storage.field(this.key) || ''; return lampa.Storage.get ? lampa.Storage.get(this.key, '') : ''; }, openDiagnostics:function (lampa) { if (lampa && lampa.Activity) lampa.Activity.push({url:'', title:'Blue-button diagnostics', component:BB.DIAGNOSTICS_COMPONENT, page:1}); }, register:function (lampa) { if (!lampa || !lampa.SettingsApi || !lampa.SettingsApi.addParam) return; if (lampa.SettingsApi.addComponent) lampa.SettingsApi.addComponent({component:'blue_button', name:'Blue-button', icon:''}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.key, type:'input', default:''}, field:{name:'Lampac URL', description:'Адрес вашего сервера Lampac, например https://example.org'}}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.diagnosticsKey, type:'trigger', default:false}, field:{name:'Диагностика Blue-button', description:'Показать этапы запуска и ошибки JavaScript'}, onChange:function (value) { if (value) { BB.Settings.openDiagnostics(lampa); if (lampa.Storage && lampa.Storage.set) lampa.Storage.set(BB.Settings.diagnosticsKey, false); } }}); } };
+  BB.Settings = { key:'blue_button_lampac_origin', diagnosticsKey:'blue_button_diagnostics', getOrigin:function (lampa) { if (!lampa || !lampa.Storage) return ''; if (lampa.Storage.field) return lampa.Storage.field(this.key) || ''; return lampa.Storage.get ? lampa.Storage.get(this.key, '') : ''; }, openDiagnostics:function (lampa) { if (lampa && lampa.Activity) lampa.Activity.push({url:'', title:'Blue-button diagnostics', component:BB.DIAGNOSTICS_COMPONENT, page:1}); }, register:function (lampa) { if (!lampa || !lampa.SettingsApi || !lampa.SettingsApi.addParam) return; if (lampa.SettingsApi.addComponent) lampa.SettingsApi.addComponent({component:'blue_button', name:'Blue-button', icon:''}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.key, type:'input', values:'', default:''}, field:{name:'Lampac URL', description:'Адрес вашего сервера Lampac, например https://example.org'}}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.diagnosticsKey, type:'trigger', default:false}, field:{name:'Диагностика Blue-button', description:'Показать этапы запуска и ошибки JavaScript'}, onChange:function (value) { if (value) { BB.Settings.openDiagnostics(lampa); if (lampa.Storage && lampa.Storage.set) lampa.Storage.set(BB.Settings.diagnosticsKey, false); } }}); } };
 }(typeof window !== 'undefined' ? window : globalThis));
 
 
@@ -288,12 +312,12 @@
     if (root.blue_button_initializing) return false;
     root.blue_button_initializing = true;
     try {
-      stage('lampa_detection', function () { lampa = root.Lampa; requireApi(lampa, 'Component'); requireApi(lampa, 'Activity'); requireApi(lampa.Component, 'add'); requireApi(lampa.Activity, 'push'); BB.Diagnostics.setApis({Lampa:!!lampa, Component:!!(lampa && lampa.Component), ComponentAdd:!!(lampa && lampa.Component && lampa.Component.add), Activity:!!(lampa && lampa.Activity), ActivityPush:!!(lampa && lampa.Activity && lampa.Activity.push), Manifest:!!(lampa && lampa.Manifest), SettingsApi:!!(lampa && lampa.SettingsApi), Reguest:!!(lampa && lampa.Reguest), Player:!!(lampa && lampa.Player), Promise:!!root.Promise}); }, true);
+      stage('lampa_detection', function () { lampa = root.Lampa; requireApi(lampa, 'Component'); requireApi(lampa, 'Activity'); requireApi(lampa.Component, 'add'); requireApi(lampa.Activity, 'push'); BB.Diagnostics.setApis({Lampa:!!lampa, Component:!!(lampa && lampa.Component), ComponentAdd:!!(lampa && lampa.Component && lampa.Component.add), Activity:!!(lampa && lampa.Activity), ActivityPush:!!(lampa && lampa.Activity && lampa.Activity.push), Listener:!!(lampa && lampa.Listener), ListenerFollow:!!(lampa && lampa.Listener && lampa.Listener.follow), Manifest:!!(lampa && lampa.Manifest), SettingsApi:!!(lampa && lampa.SettingsApi), Reguest:!!(lampa && lampa.Reguest), Player:!!(lampa && lampa.Player), Promise:!!root.Promise}); }, true);
       bridge = new BB.LampaBridge(lampa); BB.runtime.bridge = bridge;
       stage('diagnostic_component_registration', function () { bridge.addComponent(BB.DIAGNOSTICS_COMPONENT, function () { return new BB.DiagnosticsComponent(); }); }, true);
       stage('lampa_api_contract', function () { requireApi(lampa, 'Reguest'); requireApi(lampa, 'Player'); if (!root.Promise) throw new Error('Promise is unavailable and compatibility fallback failed'); }, true);
       stage('component_registration', function () { if (BB.SOURCE_COMPONENT && BB.SourceMenuComponent) bridge.addComponent(BB.SOURCE_COMPONENT, function (activity) { return new BB.SourceMenuComponent(activity); }); bridge.addComponent(BB.COMPONENT, function (activity) { return new BB.ResultsComponent(activity); }); }, true);
-      stage('manifest_registration', function () { bridge.registerCardAction(function (card) { if (BB.SOURCE_COMPONENT && BB.SourceMenuComponent) bridge.openSourceMenu(card); else bridge.openResults(card); }); }, true);
+      stage('manifest_registration', function () { var open = function (card) { if (BB.SOURCE_COMPONENT && BB.SourceMenuComponent) bridge.openSourceMenu(card); else bridge.openResults(card); }; bridge.registerCardAction(open); if (lampa.Listener && lampa.Listener.follow) bridge.registerInlineCardButton(open); else BB.Diagnostics.stage('inline_card_button', 'error', new Error('Lampa.Listener.follow is unavailable')); }, true);
       stage('settings_registration', function () { if (!lampa.SettingsApi || !lampa.SettingsApi.addParam) throw new Error('Lampa.SettingsApi.addParam is unavailable'); BB.Settings.register(lampa); }, false);
       stage('startup', function () { var sources = BB.Sources || {create:function () { return [new BB.LampacAdapter({lampa:lampa, origin:BB.Settings.getOrigin(lampa)})]; }, list:function () { return [{id:'lampac',name:'Lampac',status:'verified',enabled:true}]; }}; BB.runtime.manager = new BB.SearchManager({adapters:sources.create(lampa, BB.Settings.getOrigin(lampa))}); BB.Diagnostics.add('info', 'Blue-button initialized', {version:BB.VERSION, sources:sources.list()}); }, true);
       root.blue_button_ready = true;
