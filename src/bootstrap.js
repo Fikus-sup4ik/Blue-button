@@ -3,39 +3,26 @@
   BB.runtime = BB.runtime || {};
   function failure(stage, error) { BB.Diagnostics.stage(stage, 'error', error); try { if (root.Lampa && root.Lampa.SettingsApi && BB.Settings) BB.Settings.register(root.Lampa); } catch (recoveryError) { BB.Diagnostics.error('diagnostic_recovery', recoveryError); } root.blue_button_initializing = false; root.blue_button_ready = false; return false; }
   function requireApi(value, name) { if (!value || !value[name]) throw new Error(name + ' is unavailable'); }
+  function stage(name, fn, required) { BB.Diagnostics.stage(name, 'running'); try { var result = fn(); BB.Diagnostics.stage(name, 'ok'); return result === undefined ? true : result; } catch (error) { BB.Diagnostics.stage(name, 'error', error); if (required) throw error; return false; } }
   BB.bootstrap = function () {
-    var lampa, bridge, currentStage = 'lampa_detection';
+    var lampa, bridge;
     if (root.blue_button_ready) return true;
     if (root.blue_button_initializing) return false;
     root.blue_button_initializing = true;
     try {
-      currentStage = 'lampa_detection'; BB.Diagnostics.stage(currentStage, 'running');
-      lampa = root.Lampa;
-      requireApi(lampa, 'Component'); requireApi(lampa, 'Activity'); requireApi(lampa, 'Manifest');
-      BB.Diagnostics.stage('lampa_detection', 'ok');
-      currentStage = 'lampa_api_contract'; BB.Diagnostics.stage(currentStage, 'running');
-      requireApi(lampa, 'Reguest'); requireApi(lampa, 'Player'); requireApi(lampa.Component, 'add'); requireApi(lampa.Activity, 'push');
-      if (!root.Promise) throw new Error('Promise is unavailable and compatibility fallback failed');
-      BB.Diagnostics.stage('lampa_api_contract', 'ok');
+      stage('lampa_detection', function () { lampa = root.Lampa; requireApi(lampa, 'Component'); requireApi(lampa, 'Activity'); requireApi(lampa.Component, 'add'); requireApi(lampa.Activity, 'push'); BB.Diagnostics.setApis({Lampa:!!lampa, Component:!!(lampa && lampa.Component), ComponentAdd:!!(lampa && lampa.Component && lampa.Component.add), Activity:!!(lampa && lampa.Activity), ActivityPush:!!(lampa && lampa.Activity && lampa.Activity.push), Manifest:!!(lampa && lampa.Manifest), SettingsApi:!!(lampa && lampa.SettingsApi), Reguest:!!(lampa && lampa.Reguest), Player:!!(lampa && lampa.Player), Promise:!!root.Promise}); }, true);
       bridge = new BB.LampaBridge(lampa); BB.runtime.bridge = bridge;
-      currentStage = 'component_registration'; BB.Diagnostics.stage(currentStage, 'running');
-      bridge.addComponent(BB.DIAGNOSTICS_COMPONENT, function () { return new BB.DiagnosticsComponent(); });
-      bridge.addComponent(BB.COMPONENT, function (activity) { return new BB.ResultsComponent(activity); });
-      BB.Diagnostics.stage('component_registration', 'ok');
-      currentStage = 'manifest_registration'; BB.Diagnostics.stage(currentStage, 'running');
-      if (!bridge.registerCardAction(function (card) { bridge.openResults(card); })) throw new Error('Lampa.Manifest.plugins registration failed');
-      BB.Diagnostics.stage('manifest_registration', 'ok');
-      currentStage = 'settings_registration'; BB.Diagnostics.stage(currentStage, 'running');
-      BB.Settings.register(lampa);
-      BB.Diagnostics.stage('settings_registration', 'ok');
-      currentStage = 'startup'; BB.Diagnostics.stage(currentStage, 'running');
-      BB.runtime.manager = new BB.SearchManager({adapters:[new BB.LampacAdapter({lampa:lampa, origin:BB.Settings.getOrigin(lampa)})]});
-      BB.Diagnostics.add('info', 'Blue-button initialized', {version:BB.VERSION});
-      BB.Diagnostics.stage('startup', 'ok');
+      stage('diagnostic_component_registration', function () { bridge.addComponent(BB.DIAGNOSTICS_COMPONENT, function () { return new BB.DiagnosticsComponent(); }); }, true);
+      stage('diagnostic_action_registration', function () { try { bridge.registerDiagnosticsAction(function () { BB.Settings.openDiagnostics(lampa); }); } catch (manifestError) { BB.Diagnostics.error('diagnostic_action_registration', manifestError); bridge.registerDiagnosticsMenuFallback(function () { BB.Settings.openDiagnostics(lampa); }); BB.Diagnostics.add('warn', 'Manifest diagnostic action unavailable; menu fallback registered'); } }, false);
+      stage('lampa_api_contract', function () { requireApi(lampa, 'Reguest'); requireApi(lampa, 'Player'); if (!root.Promise) throw new Error('Promise is unavailable and compatibility fallback failed'); }, true);
+      stage('component_registration', function () { bridge.addComponent(BB.COMPONENT, function (activity) { return new BB.ResultsComponent(activity); }); }, true);
+      stage('manifest_registration', function () { bridge.registerCardAction(function (card) { bridge.openResults(card); }); }, true);
+      stage('settings_registration', function () { if (!lampa.SettingsApi || !lampa.SettingsApi.addParam) throw new Error('Lampa.SettingsApi.addParam is unavailable'); BB.Settings.register(lampa); }, false);
+      stage('startup', function () { BB.runtime.manager = new BB.SearchManager({adapters:[new BB.LampacAdapter({lampa:lampa, origin:BB.Settings.getOrigin(lampa)})]}); BB.Diagnostics.add('info', 'Blue-button initialized', {version:BB.VERSION}); }, true);
       root.blue_button_ready = true;
       root.blue_button_initializing = false;
       return true;
-    } catch (error) { return failure(currentStage, error); }
+    } catch (error) { return failure('bootstrap', error); }
   };
   function start() {
     try {

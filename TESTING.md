@@ -2,13 +2,13 @@
 
 ## Статус
 
-На 2026-11-20 реализована версия Blue-button 0.1.2. Реальные тесты в Lampa и на серверах Lampac не выполнялись; работа плагина на устройстве и с конкретным сервером не объявляется подтверждённой.
+На 2026-11-20 реализована версия Blue-button 0.1.3. Реальные тесты в Lampa и на серверах Lampac не выполнялись; работа плагина на устройстве и с конкретным сервером не объявляется подтверждённой.
 
-## Автоматические тесты 0.1.2
+## Автоматические тесты 0.1.3
 
 Запуск: `npm test` или `node scripts/test.js`. В текущей рабочей среде `npm` не установлен, поэтому фактически выполнен эквивалент `node scripts/test.js`; `npm run build` аналогично заменён на `node scripts/build.js`.
 
-Последний локальный запуск: **15 из 15 пройдены**.
+Последний локальный запуск: **20 из 20 пройдены**.
 
 - movie/tv metadata resolver;
 - нормализация прямого `method: play` и отклонение небезопасного URL;
@@ -22,6 +22,11 @@
 - сохранение вариантов разных quality при удалении точных дублей.
 - запись ошибки отсутствующего Lampa API без установки `blue_button_ready`;
 - успешная повторная инициализация после исправления среды.
+- отдельная регистрация действий BLUE-BUTTON и «Диагностика Blue-button»;
+- ошибки SettingsApi, Component, Manifest и отсутствие Promise;
+- отсутствие готовности после ошибки обязательной регистрации;
+- отсутствие дублирования действий при повторной инициализации;
+- проверка названия действия и версии.
 
 Fixture с `.synthetic` является вымышленным примером структуры и не имитирует работу production-сервера. Тестовый transport не является реальной Lampa.
 
@@ -36,7 +41,7 @@ Fixture с `.synthetic` является вымышленным примером
 5. Проверить список с количеством, provider, quality, translation и release type; выбрать только `method:play`.
 6. Проверить `Player.play`, возврат назад, закрытие во время polling и новый поиск. Реальное воспроизведение считать пройденным только при фактическом старте видео.
 
-Экран диагностики доступен в разделе настроек Blue-button. Он показывает `script_loaded`, `app_readiness`, `lampa_detection`, `lampa_api_contract`, `component_registration`, `manifest_registration`, `settings_registration` и `startup`. JavaScript errors и unhandled rejections сохраняют сообщение и stack trace.
+Экран диагностики доступен отдельным действием в контекстном меню карточки и в разделе настроек Blue-button. Он показывает `script_loaded`, `app_readiness`, `lampa_detection`, `lampa_api_contract`, `diagnostic_component_registration`, `diagnostic_action_registration`, `component_registration`, `manifest_registration`, `settings_registration` и `startup`. JavaScript errors и unhandled rejections сохраняют сообщение и stack trace.
 
 Источник статического аудита: Andrprod-test-v4.0.1.js, 2 059 строк, SHA-256 2BA22C4C96A94A1B30D15F5A67E1F28FB1390662ABA9521ABAE54847DA18A332. API и ссылки на строки см. API_DOCUMENTATION.md.
 

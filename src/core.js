@@ -1,7 +1,7 @@
 ;(function (root) {
   'use strict';
   var BB = root.BlueButton = root.BlueButton || {};
-  BB.VERSION = '0.1.2';
+  BB.VERSION = '0.1.3';
   BB.NAME = 'Blue-button';
   BB.COMPONENT = 'blue_button_results';
   BB.DIAGNOSTICS_COMPONENT = 'blue_button_diagnostics';

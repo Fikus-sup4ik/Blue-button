@@ -95,7 +95,9 @@ bootstrap / startPlugin
 
 `src/core.js` содержит общие безопасные операции; `title-resolver`, `normalizer`, `cache-manager`, `diagnostics` и `search-manager` не зависят от UI. `adapters/lampac.js` изолирует сетевой протокол. `lampa-bridge` — единственное место для Manifest, Activity, Component, Noty и Player. `components/results` создаёт экран и передаёт только выбранный normalized result в bridge. `bootstrap` связывает модули и защищает от повторной инициализации флагом `window.blue_button_ready`.
 
-Сборщик `scripts/build.js` соединяет эти ES5-файлы в `dist/blue-button.js` без внешних runtime-зависимостей. Promise используется для управления асинхронным поиском и должен быть проверен на целевых старых WebView до объявления совместимости.
+Сборщик `scripts/build.js` соединяет эти ES5-файлы в `dist/blue-button.js` без внешних runtime-зависимостей. Promise используется для управления асинхронным поиском и дополнен ES5 fallback.
+
+Версия 0.1.3 добавляет ранний диагностический Component и отдельное Manifest-действие. Основное BLUE-BUTTON регистрируется вторым additive setter. SettingsApi не является условием доступа к диагностике; при его ошибке журнал остаётся доступен через карточку. При отсутствии Manifest применяется только подтверждённый документацией Lampa fallback бокового меню.
 
 Это план минимального вертикального среза, не утверждение о готовом коде. Карточное действие будет регистрироваться документированным `Lampa.Manifest.plugins` context action; официальный setter добавляет manifest entry. Прежнее сомнение об «перезаписи массива» снимается ниже в API документации.
 

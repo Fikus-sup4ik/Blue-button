@@ -185,7 +185,7 @@ window.$/jQuery также требуется при старте (1997–2002);
 
 ## Проверка первичных контрактов для прототипа (2026-11-20)
 
-## Реализация Blue-button 0.1.2
+## Реализация Blue-button 0.1.3
 
 Реализованный контракт адаптера: `search(media) → Promise<{status, items}>`, `cancel()`. Статусы: `ok`, `empty`, `cancelled`, `error`. Один adapter не должен завершать общий поиск ошибкой: SearchManager изолирует его ошибку и оставляет результаты остальных.
 
@@ -198,6 +198,10 @@ Player bridge передаёт `url`, `title`, `quality`/quality map, `subtitles
 В 0.1.1 настройки регистрируют раздел через `SettingsApi.addComponent`, параметр через `addParam`, а значение читается через `Storage.field`. Component `create()` возвращает `render()`, `destroy()` снимает result handlers, удаляет DOM и отменяет поиск. SearchManager хранит token конкретного запуска, поэтому поздний callback старого поиска не может отрисовать новый экран.
 
 В 0.1.2 bootstrap выполняется по этапам с `try/catch`: `script_loaded`, `app_readiness`, `lampa_detection`, `lampa_api_contract`, `component_registration`, `manifest_registration`, `settings_registration`, `startup`. Ошибка записывается с `stage`, `message` и `stack`; `window.blue_button_ready` выставляется только после успешного `startup`. Настройка trigger «Диагностика Blue-button» открывает отдельный Component с таблицей статусов и журналом ошибок. В сборку добавлен ES5 Promise fallback для WebView без native Promise.
+
+В 0.1.3 диагностический Component и диагностическое действие регистрируются до основного Component и SettingsApi. Два действия создаются двумя присваиваниями `Lampa.Manifest.plugins`, что соответствует документированному additive setter и не заменяет действия других плагинов: [Manifest/menu docs](https://github.com/lampame/LampaC/blob/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496/lampa-source/docs/ru/09-manifest-menu.md). Если Manifest setter недоступен, используется документированный DOM fallback бокового меню (`.menu .menu__list`) при наличии jQuery; альтернативный card context API для отсутствующего Manifest не заявляется. Ошибка fallback также сохраняется.
+
+Настройки являются необязательным этапом: ошибка `SettingsApi.addParam` отображается, но не скрывает диагностическое действие и не мешает основной инициализации, если основное действие зарегистрировано. Ошибка обязательных `Component`, `Manifest`, Lampa network/player API или Promise оставляет `blue_button_ready` ложным.
 
 Источники — документация и исходники LampaC/Lampac по commit [`94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`](https://github.com/lampame/LampaC/commit/94d274e76b06ee0c1b5d4b52c1cc47805e9d5496). Это доказывает наличие API в указанном source snapshot, но не совместимость каждой установленной Lampa версии и не успешный runtime вызов.
 
