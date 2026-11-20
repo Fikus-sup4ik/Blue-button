@@ -9,7 +9,7 @@
 ## Установка
 
 1. В Lampa откройте настройки плагинов и добавьте URL:
-   `https://raw.githubusercontent.com/Fikus-sup4ik/Blue-button/main/dist/blue-button.js`
+   `https://raw.githubusercontent.com/Fikus-sup4ik/Blue-button/865cb69e0bd8035f9f9015386ce37672aa2e5abb/dist/blue-button.js`
 2. В настройках Blue-button укажите URL своего сервера Lampac.
 3. Откройте карточку фильма или сериала, затем context menu и выберите **BLUE-BUTTON**.
 
