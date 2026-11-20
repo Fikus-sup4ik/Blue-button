@@ -267,7 +267,7 @@ Blue-button/
 - Cache key не содержит год и для сериалов сезон/эпизод; возможны неверные cache hits между разными объектами.
 - Сетевые handles/timers добавляются в списки активного поиска и очищаются только при следующей отмене; после завершения остаются ссылки до следующего поиска.
 - Health check custom adapter может не завершиться, если adapter не вызовет callback; нет внешнего watchdog на все adapter types.
-- Присвоение Lampa.Manifest.plugins объекту в registerManifest расходится с тем, что SourceRegistry позже принимает Manifest.plugins только как Array; проверить риск затирания/несовместимости.
+- По сверке с первичной документацией Lampa прежнее подозрение о затирании снято: `Lampa.Manifest.plugins` описан как добавляющий setter; поведение целевой сборки проверяется на устройстве.
 - lampac_or_native создаётся как Lampac adapter, хотя комментарий обещает fallback к native-кнопке; фактическая ветка fallback не реализована для этого adapter.
 - launchPluginLiveButton после backward() возвращает true до того, как кнопка найдена; вызывающий код может считать асинхронную попытку успешной.
 - DOM поиск live-кнопок по тексту/class и событие hover:enter хрупки к версиям и локализации.
@@ -276,3 +276,8 @@ Blue-button/
 - Код вставляет poster URL в inline style; значение нужно проверять/экранировать, а playback URL ограничить разрешёнными схемами.
 
 Эти наблюдения — findings статического чтения; до воспроизведения в Lampa считать их рисками/кодовой логикой, не runtime-результатами.
+
+
+## 18. Первичный контракт и scope прототипа
+
+Первый вертикальный срез опирается на первичные документы и исходники Lampa/Lampac, закреплённые в API_DOCUMENTATION.md по commit `94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`. Использовать manifest context action, Activity/Component, Reguest и Player только с указанными контрактами и device test. Lampac flow: `/lite/events` с media metadata и `life=true` → `memkey` → `/lifeevents` long-poll → provider HTML → только подтверждённые `method:'play'` entries. Старый `/lite/events?life=true` без metadata не переносить. Документные формы ответа не являются live captures. До реализации главного кода пользователь проверяет структуру и контракт; любые live claims запрещены без acceptance run.
