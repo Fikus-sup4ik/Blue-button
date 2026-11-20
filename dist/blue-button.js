@@ -3,9 +3,11 @@
 ;(function (root) {
   'use strict';
   var BB = root.BlueButton = root.BlueButton || {};
-  BB.VERSION = '0.1.1';
+  BB.VERSION = '0.1.2';
   BB.NAME = 'Blue-button';
   BB.COMPONENT = 'blue_button_results';
+  BB.DIAGNOSTICS_COMPONENT = 'blue_button_diagnostics';
+  if (root.blue_button_version !== BB.VERSION) { root.blue_button_ready = false; root.blue_button_initializing = false; root.blue_button_version = BB.VERSION; }
   BB.utils = {
     trim: function (value) { return typeof value === 'string' ? value.replace(/^\s+|\s+$/g, '') : ''; },
     once: function (fn) { var called = false; return function () { if (called) return; called = true; return fn.apply(null, arguments); }; },
@@ -18,10 +20,34 @@
 }(typeof window !== 'undefined' ? window : globalThis));
 
 
+/* src/promise.js */
+;(function (root) {
+  'use strict';
+  if (root.Promise) return;
+  function MiniPromise(executor) {
+    var self = this; self.state = 'pending'; self.value = undefined; self.handlers = [];
+    function settle(state, value) { if (self.state !== 'pending') return; self.state = state; self.value = value; drain(); }
+    function drain() { if (self.state === 'pending') return; setTimeout(function () { var handlers = self.handlers.slice(); self.handlers = []; handlers.forEach(function (h) { var cb = self.state === 'fulfilled' ? h.ok : h.fail; if (!cb) return (self.state === 'fulfilled' ? h.resolve : h.reject)(self.value); try { h.resolve(cb(self.value)); } catch (e) { h.reject(e); } }); }, 0); }
+    function resolve(value) { if (value === self) return settle('rejected', new TypeError('Promise cycle')); if (value && typeof value.then === 'function') return value.then(resolve, reject); settle('fulfilled', value); }
+    function reject(error) { settle('rejected', error); }
+    self.then = function (ok, fail) { return new MiniPromise(function (resolveNext, rejectNext) { self.handlers.push({ok:ok, fail:fail, resolve:resolveNext, reject:rejectNext}); drain(); }); };
+    self.catch = function (fail) { return self.then(null, fail); };
+    try { executor(resolve, reject); } catch (e) { reject(e); }
+  }
+  MiniPromise.resolve = function (value) { return new MiniPromise(function (resolve) { resolve(value); }); };
+  MiniPromise.reject = function (value) { return new MiniPromise(function (resolve, reject) { reject(value); }); };
+  MiniPromise.all = function (list) { return new MiniPromise(function (resolve, reject) { var out = [], left = list.length; if (!left) return resolve(out); list.forEach(function (item, i) { MiniPromise.resolve(item).then(function (value) { out[i] = value; if (!--left) resolve(out); }, reject); }); }); };
+  MiniPromise.race = function (list) { return new MiniPromise(function (resolve, reject) { list.forEach(function (item) { MiniPromise.resolve(item).then(resolve, reject); }); }); };
+  root.Promise = MiniPromise;
+}(typeof window !== 'undefined' ? window : globalThis));
+
+
 /* src/diagnostics.js */
 ;(function (root) {
   'use strict'; var BB = root.BlueButton;
-  BB.Diagnostics = { entries: [], add: function (level, message, data) { this.entries.push({time: BB.utils.now(), level: level, message: message, data: data || null}); if (this.entries.length > 100) this.entries.shift(); }, list: function () { return this.entries.slice(); }, clear: function () { this.entries = []; } };
+  BB.Diagnostics = { entries: [], stages: {}, add: function (level, message, data) { var entry = {time: BB.utils.now(), level: level, message: message, data: data || null}; this.entries.push(entry); if (this.entries.length > 200) this.entries.shift(); if (root.console && root.console.error && level === 'error') root.console.error('[Blue-button]', message, data || ''); return entry; }, error: function (stage, error) { var e = error || {}; return this.add('error', e.message || String(e), {stage:stage, stack:e.stack || 'stack unavailable'}); }, stage: function (name, status, error) { this.stages[name] = {status:status, time:BB.utils.now(), error:error ? {message:error.message || String(error), stack:error.stack || 'stack unavailable'} : null}; if (error) this.error(name, error); return this.stages[name]; }, list: function () { return this.entries.slice(); }, snapshot: function () { return {version:BB.VERSION, stages:this.stages, entries:this.list()}; }, clear: function () { this.entries = []; } };
+  BB.Diagnostics.stage('script_loaded', 'ok');
+  if (root.addEventListener) { root.addEventListener('error', function (event) { BB.Diagnostics.error('javascript_runtime', event.error || new Error(event.message || 'Unknown JavaScript error')); }); root.addEventListener('unhandledrejection', function (event) { BB.Diagnostics.error('unhandled_rejection', event.reason || new Error('Unhandled promise rejection')); }); } else if (!root.__blueButtonOnError) { root.__blueButtonOnError = true; root.onerror = function (message, source, line, column, error) { BB.Diagnostics.error('javascript_runtime', error || new Error(String(message) + ' at ' + source + ':' + line + ':' + column)); }; }
 }(typeof window !== 'undefined' ? window : globalThis));
 
 
@@ -153,10 +179,22 @@
 }(typeof window !== 'undefined' ? window : globalThis));
 
 
+/* src/components/diagnostics.js */
+;(function (root) {
+  'use strict'; var BB = root.BlueButton;
+  BB.DiagnosticsComponent = function () { this.el = null; };
+  BB.DiagnosticsComponent.prototype.create = function () { this.render(); return this.el; };
+  BB.DiagnosticsComponent.prototype.start = function () {};
+  BB.DiagnosticsComponent.prototype.stop = function () {};
+  BB.DiagnosticsComponent.prototype.destroy = function () { if (this.el && this.el.remove) this.el.remove(); this.el = null; };
+  BB.DiagnosticsComponent.prototype.render = function () { var self = this, snapshot = BB.Diagnostics.snapshot(), html = '<div class="activity"><div class="activity__body"><div class="simple-button selector">Blue-button ' + BB.utils.escapeHtml(snapshot.version) + '</div>'; Object.keys(snapshot.stages).forEach(function (name) { var stage = snapshot.stages[name], error = stage.error ? ' — ' + stage.error.message : ''; html += '<div class="simple-button">' + BB.utils.escapeHtml(name + ': ' + stage.status + error) + '</div>'; }); snapshot.entries.forEach(function (entry) { html += '<div class="simple-button">' + BB.utils.escapeHtml(entry.level + ': ' + entry.message + (entry.data && entry.data.stage ? ' [' + entry.data.stage + ']' : '')) + '</div>'; }); html += '</div></div>'; if (root.$) { this.el = root.$(html); this.el.on('hover:enter', function () { self.render(); }); } return this.el; };
+}(typeof window !== 'undefined' ? window : globalThis));
+
+
 /* src/settings.js */
 ;(function (root) {
   'use strict'; var BB = root.BlueButton;
-  BB.Settings = { key:'blue_button_lampac_origin', getOrigin:function (lampa) { if (!lampa || !lampa.Storage) return ''; if (lampa.Storage.field) return lampa.Storage.field(this.key) || ''; return lampa.Storage.get ? lampa.Storage.get(this.key, '') : ''; }, register:function (lampa) { if (!lampa || !lampa.SettingsApi || !lampa.SettingsApi.addParam) return; if (lampa.SettingsApi.addComponent) lampa.SettingsApi.addComponent({component:'blue_button', name:'Blue-button', icon:''}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.key, type:'input', default:''}, field:{name:'Lampac URL', description:'Адрес вашего сервера Lampac, например https://example.org'}}); } };
+  BB.Settings = { key:'blue_button_lampac_origin', diagnosticsKey:'blue_button_diagnostics', getOrigin:function (lampa) { if (!lampa || !lampa.Storage) return ''; if (lampa.Storage.field) return lampa.Storage.field(this.key) || ''; return lampa.Storage.get ? lampa.Storage.get(this.key, '') : ''; }, openDiagnostics:function (lampa) { if (lampa && lampa.Activity) lampa.Activity.push({url:'', title:'Blue-button diagnostics', component:BB.DIAGNOSTICS_COMPONENT, page:1}); }, register:function (lampa) { if (!lampa || !lampa.SettingsApi || !lampa.SettingsApi.addParam) return; if (lampa.SettingsApi.addComponent) lampa.SettingsApi.addComponent({component:'blue_button', name:'Blue-button', icon:''}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.key, type:'input', default:''}, field:{name:'Lampac URL', description:'Адрес вашего сервера Lampac, например https://example.org'}}); lampa.SettingsApi.addParam({component:'blue_button', param:{name:BB.Settings.diagnosticsKey, type:'trigger', default:false}, field:{name:'Диагностика Blue-button', description:'Показать этапы запуска и ошибки JavaScript'}, onChange:function (value) { if (value) { BB.Settings.openDiagnostics(lampa); if (lampa.Storage && lampa.Storage.set) lampa.Storage.set(BB.Settings.diagnosticsKey, false); } }}); } };
 }(typeof window !== 'undefined' ? window : globalThis));
 
 
@@ -164,19 +202,49 @@
 ;(function (root) {
   'use strict'; var BB = root.BlueButton;
   BB.runtime = BB.runtime || {};
+  function failure(stage, error) { BB.Diagnostics.stage(stage, 'error', error); try { if (root.Lampa && root.Lampa.SettingsApi && BB.Settings) BB.Settings.register(root.Lampa); } catch (recoveryError) { BB.Diagnostics.error('diagnostic_recovery', recoveryError); } root.blue_button_initializing = false; root.blue_button_ready = false; return false; }
+  function requireApi(value, name) { if (!value || !value[name]) throw new Error(name + ' is unavailable'); }
   BB.bootstrap = function () {
-    if (root.blue_button_ready) return;
-    var lampa = root.Lampa;
-    if (!lampa || !lampa.Component || !lampa.Activity || !lampa.Manifest || !lampa.Reguest || !lampa.Player) return;
-    root.blue_button_ready = true;
-    var bridge = new BB.LampaBridge(lampa);
-    BB.runtime.bridge = bridge;
-    BB.runtime.manager = new BB.SearchManager({adapters:[new BB.LampacAdapter({lampa:lampa, origin:BB.Settings.getOrigin(lampa)})]});
-    bridge.addComponent(BB.COMPONENT, function (activity) { return new BB.ResultsComponent(activity); });
-    bridge.registerCardAction(function (card) { bridge.openResults(card); });
-    BB.Settings.register(lampa);
-    BB.Diagnostics.add('info', 'Blue-button initialized', {version:BB.VERSION});
+    var lampa, bridge, currentStage = 'lampa_detection';
+    if (root.blue_button_ready) return true;
+    if (root.blue_button_initializing) return false;
+    root.blue_button_initializing = true;
+    try {
+      currentStage = 'lampa_detection'; BB.Diagnostics.stage(currentStage, 'running');
+      lampa = root.Lampa;
+      requireApi(lampa, 'Component'); requireApi(lampa, 'Activity'); requireApi(lampa, 'Manifest');
+      BB.Diagnostics.stage('lampa_detection', 'ok');
+      currentStage = 'lampa_api_contract'; BB.Diagnostics.stage(currentStage, 'running');
+      requireApi(lampa, 'Reguest'); requireApi(lampa, 'Player'); requireApi(lampa.Component, 'add'); requireApi(lampa.Activity, 'push');
+      if (!root.Promise) throw new Error('Promise is unavailable and compatibility fallback failed');
+      BB.Diagnostics.stage('lampa_api_contract', 'ok');
+      bridge = new BB.LampaBridge(lampa); BB.runtime.bridge = bridge;
+      currentStage = 'component_registration'; BB.Diagnostics.stage(currentStage, 'running');
+      bridge.addComponent(BB.DIAGNOSTICS_COMPONENT, function () { return new BB.DiagnosticsComponent(); });
+      bridge.addComponent(BB.COMPONENT, function (activity) { return new BB.ResultsComponent(activity); });
+      BB.Diagnostics.stage('component_registration', 'ok');
+      currentStage = 'manifest_registration'; BB.Diagnostics.stage(currentStage, 'running');
+      if (!bridge.registerCardAction(function (card) { bridge.openResults(card); })) throw new Error('Lampa.Manifest.plugins registration failed');
+      BB.Diagnostics.stage('manifest_registration', 'ok');
+      currentStage = 'settings_registration'; BB.Diagnostics.stage(currentStage, 'running');
+      BB.Settings.register(lampa);
+      BB.Diagnostics.stage('settings_registration', 'ok');
+      currentStage = 'startup'; BB.Diagnostics.stage(currentStage, 'running');
+      BB.runtime.manager = new BB.SearchManager({adapters:[new BB.LampacAdapter({lampa:lampa, origin:BB.Settings.getOrigin(lampa)})]});
+      BB.Diagnostics.add('info', 'Blue-button initialized', {version:BB.VERSION});
+      BB.Diagnostics.stage('startup', 'ok');
+      root.blue_button_ready = true;
+      root.blue_button_initializing = false;
+      return true;
+    } catch (error) { return failure(currentStage, error); }
   };
-  function start() { if (root.appready) BB.bootstrap(); else if (root.Lampa && root.Lampa.Listener && root.Lampa.Listener.follow) root.Lampa.Listener.follow('app', function (e) { if (e && e.type === 'ready') BB.bootstrap(); }); else { var tries = 0, timer = setInterval(function () { tries++; BB.bootstrap(); if (root.blue_button_ready || tries >= 40) clearInterval(timer); }, 250); } }
+  function start() {
+    try {
+      BB.Diagnostics.stage('app_readiness', 'waiting');
+      if (root.appready) { BB.Diagnostics.stage('app_readiness', 'ok'); return BB.bootstrap(); }
+      if (root.Lampa && root.Lampa.Listener && root.Lampa.Listener.follow) { root.Lampa.Listener.follow('app', function (event) { try { if (event && event.type === 'ready') { BB.Diagnostics.stage('app_readiness', 'ok'); BB.bootstrap(); } } catch (error) { failure('app_readiness', error); } }); return; }
+      throw new Error('window.appready is false and Lampa.Listener.follow is unavailable');
+    } catch (error) { failure('app_readiness', error); }
+  }
   start();
 }(typeof window !== 'undefined' ? window : globalThis));

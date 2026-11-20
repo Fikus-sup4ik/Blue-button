@@ -1,9 +1,11 @@
 ;(function (root) {
   'use strict';
   var BB = root.BlueButton = root.BlueButton || {};
-  BB.VERSION = '0.1.1';
+  BB.VERSION = '0.1.2';
   BB.NAME = 'Blue-button';
   BB.COMPONENT = 'blue_button_results';
+  BB.DIAGNOSTICS_COMPONENT = 'blue_button_diagnostics';
+  if (root.blue_button_version !== BB.VERSION) { root.blue_button_ready = false; root.blue_button_initializing = false; root.blue_button_version = BB.VERSION; }
   BB.utils = {
     trim: function (value) { return typeof value === 'string' ? value.replace(/^\s+|\s+$/g, '') : ''; },
     once: function (fn) { var called = false; return function () { if (called) return; called = true; return fn.apply(null, arguments); }; },
