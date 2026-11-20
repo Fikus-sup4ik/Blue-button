@@ -1,0 +1,17 @@
+{
+  "_fixture_status": "SYNTHETIC — documented shape only; not a captured Lampac response",
+  "ready": false,
+  "tasks": 2,
+  "head": true,
+  "pending": ["provider-a", "provider-b"],
+  "online": [
+    {
+      "name": "Synthetic provider result",
+      "url": "https://provider.example/lite/provider-a",
+      "index": 0,
+      "show": true,
+      "balanser": "provider-a",
+      "rch": false
+    }
+  ]
+}
