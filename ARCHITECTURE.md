@@ -88,3 +88,29 @@ bootstrap / startPlugin
 5. Затем добавлять фильтры, cache, settings и дополнительные adapters. Каждый этап — отдельный небольшой commit и обновление API/TESTING документации.
 
 См. [API_DOCUMENTATION.md](API_DOCUMENTATION.md) — места в исходнике и точный статус проверки; [TESTING.md](TESTING.md) — список реальных проверок.
+
+## Первый прототип: технический фундамент (2026-11-20)
+
+Это план минимального вертикального среза, не утверждение о готовом коде. Карточное действие будет регистрироваться документированным `Lampa.Manifest.plugins` context action; официальный setter добавляет manifest entry. Прежнее сомнение об «перезаписи массива» снимается ниже в API документации.
+
+Минимальные будущие модули:
+
+- `src/bootstrap.js`: ждать готовности Lampa и запускать регистрацию один раз.
+- `src/lampa-bridge.js`: тонкий слой над подтверждёнными Manifest, Component, Activity, Reguest и Player surfaces.
+- `src/card-integration.js`: получить card context из manifest action и передать его в Activity.
+- `src/components/results.js`: состояния поиска, список результатов и выбор.
+- `src/adapters/lampac.js`: metadata events, memkey/poll, provider HTML, извлечение известных play-элементов.
+- `src/normalizer.js`: внутренняя схема подтверждённых результатов и URL validation.
+- `src/player-bridge.js`: передача выбранного прямого URL в документированный Player API.
+- `tests/`: unit fixtures и проверки независимых от Lampa функций.
+- `dist/`: пока только README; готовой сборки нет.
+
+### Вертикальный сценарий и границы
+
+Карточка (Manifest action) → Activity/component с карточкой → Lampac `/lite/events` с metadata и `life=true` → получить `memkey` → опрашивать `/lifeevents` с поисковым контекстом и growing `seen` → выбрать элемент `online` с `show:true` → запросить provider URL как text → разобрать известные Lampac HTML `.videos__item` / `.videos__button[data-json]` → показать только подтверждённые `method: play` → передать URL/title/quality/subtitles в Player.play.
+
+В первом срезе не поддерживать `call`, вложенные `link`, RCH, сериал-иерархии, voice buttons или прочие источники. Документные примеры Lampac — shape references, не captured responses; реальные ответы пока не снимались.
+
+Порядок реализации после review: unit tests URL builder/parser → bootstrap и manifest action → экран результатов → Lampac lifecycle/cancel → provider parser → выбор → Player.play → живой acceptance run. Совместимость и работоспособность до этого не заявляются.
+
+См. [API_DOCUMENTATION.md](API_DOCUMENTATION.md), [TESTING.md](TESTING.md). Первичные источники зафиксированы по commit `94d274e76b06ee0c1b5d4b52c1cc47805e9d5496`.
